@@ -3,6 +3,10 @@ package tarkhana.objectdiffer;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Set;
+import java.util.HashSet;
 
 public class ObjectDiffer {
 
@@ -46,11 +50,16 @@ public class ObjectDiffer {
                 state = DiffState.CHANGED;
             }
         } else {
-            for (Field field : toUse.getClass().getDeclaredFields()) {
+            Set<String> fields = new HashSet<>();
+            Map<String, Object> oldValues = getFieldValues(oldO, fields);
+            Map<String, Object> newValues = getFieldValues(newO, fields);
+            for (String field : fields) {
+                Object oldV = oldValues.get(field);
+                Object newV = newValues.get(field);
                 DiffNode childDiff = getDiff(
-                        oldO == null ? null : field.get(oldO),
-                        newO == null ? null : field.get(newO),
-                        field.getName()
+                    oldV,
+                    newV,
+                    field
                 );
                 if (state == null && childDiff.getState() != DiffState.UNCHANGED) {
                     state = DiffState.CHANGED;
@@ -66,6 +75,19 @@ public class ObjectDiffer {
                 .withNewValue(newO)
                 .withChildren(childDiffs)
                 .build();
+    }
+
+    private <T> Map<String, Object> getFieldValues(T o, Set<String> fields) throws IllegalAccessException {
+        if (o == null) {
+            return new HashMap<>();
+        }
+        Map<String, Object> result = new HashMap<>();
+        for (Field field : o.getClass().getDeclaredFields()) {
+            field.setAccessible(true);
+            result.put(field.getName(), field.get(o));
+            fields.add(field.getName());
+        }
+        return result;
     }
 
     public static final class ObjectDiffBuilder {
